@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # iconize.sh - Optimize and convert image files to ICO format.
-# Copyright (C) 2026
+#
+# Copyright (C) 2026 Toni Homedes i Saun <toni@homedes.net>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +22,7 @@ set -o pipefail
 
 PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 VERBOSE=0
 ICON_SIZE=256
 FILES=()
@@ -40,7 +41,8 @@ Options:
   -h, --help         Display this help message and exit
       --version      Output version information and exit
 
-Report bugs to: <https://github.com/>
+Report bugs to: <https://github.com/thomedes/iconize>
+
 License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -52,7 +54,9 @@ EOF
 show_version() {
     cat << EOF
 iconize $VERSION
-Copyright (C) 2026
+
+Copyright (C) 2026 Toni Homedes i Saun <toni@homedes.net>
+
 License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
