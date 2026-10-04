@@ -22,7 +22,7 @@ set -o pipefail
 
 PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 VERBOSE=0
 ALL_METHODS=0
 ICON_SIZE=256
@@ -140,6 +140,43 @@ else
     log_verbose "Notice: 'icoutils' (icotool) not found. Skipping icotool method."
 fi
 
+create_png_ico() {
+    local PNG_FILE="$1"
+    local ICO_FILE="$2"
+    local GEOMETRY WIDTH HEIGHT
+    if ! GEOMETRY=$("$IM_CMD" "$PNG_FILE" -format '%w %h' info: 2>/dev/null); then
+        return 1
+    fi
+    read -r WIDTH HEIGHT <<<"$GEOMETRY"
+    if [[ ! "$WIDTH" =~ ^[1-9][0-9]*$ || ! "$HEIGHT" =~ ^[1-9][0-9]*$ ]] ||
+        ((WIDTH > 256 || HEIGHT > 256)); then
+        return 1
+    fi
+
+    local PNG_BYTES
+    PNG_BYTES=$(stat -c%s "$PNG_FILE") || return 1
+    if ((PNG_BYTES > 4294967273)); then
+        return 1
+    fi
+
+    local WIDTH_BYTE="$WIDTH" HEIGHT_BYTE="$HEIGHT"
+    ((WIDTH == 256)) && WIDTH_BYTE=0
+    ((HEIGHT == 256)) && HEIGHT_BYTE=0
+
+    local SIZE_0 SIZE_1 SIZE_2 SIZE_3 WIDTH_HEX HEIGHT_HEX
+    printf -v SIZE_0 '%02x' "$((PNG_BYTES & 255))"
+    printf -v SIZE_1 '%02x' "$(((PNG_BYTES >> 8) & 255))"
+    printf -v SIZE_2 '%02x' "$(((PNG_BYTES >> 16) & 255))"
+    printf -v SIZE_3 '%02x' "$(((PNG_BYTES >> 24) & 255))"
+    printf -v WIDTH_HEX '%02x' "$WIDTH_BYTE"
+    printf -v HEIGHT_HEX '%02x' "$HEIGHT_BYTE"
+
+    {
+        printf '%b' "\\x00\\x00\\x01\\x00\\x01\\x00\\x${WIDTH_HEX}\\x${HEIGHT_HEX}\\x00\\x00\\x01\\x00\\x20\\x00\\x${SIZE_0}\\x${SIZE_1}\\x${SIZE_2}\\x${SIZE_3}\\x16\\x00\\x00\\x00"
+        cat "$PNG_FILE"
+    } >"$ICO_FILE"
+}
+
 # Process a single file
 process_file() {
     local INPUT_IMG="$1"
@@ -165,7 +202,29 @@ process_file() {
 
     # Rasterize SVG or resize bitmap
     if [[ "$INPUT_IMG" =~ \.svg$ ]]; then
-        if ! "$IM_CMD" -background none "$INPUT_IMG" -resize "${ICON_SIZE}x${ICON_SIZE}" "$RAW_PNG" 2>/dev/null; then
+        local SVG_GEOMETRY
+        if ! SVG_GEOMETRY=$("$IM_CMD" -density 96 "$INPUT_IMG" -format '%w %h' info: 2>/dev/null); then
+            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "SVG dimension inspection error"
+            cleanup_local
+            return 1
+        fi
+
+        local SVG_WIDTH SVG_HEIGHT SVG_MAX_DIM SVG_DENSITY
+        read -r SVG_WIDTH SVG_HEIGHT <<<"$SVG_GEOMETRY"
+        if [[ ! "$SVG_WIDTH" =~ ^[1-9][0-9]*$ || ! "$SVG_HEIGHT" =~ ^[1-9][0-9]*$ ]]; then
+            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "Invalid SVG dimensions"
+            cleanup_local
+            return 1
+        fi
+        SVG_MAX_DIM="$SVG_WIDTH"
+        if ((SVG_HEIGHT > SVG_MAX_DIM)); then
+            SVG_MAX_DIM="$SVG_HEIGHT"
+        fi
+        SVG_DENSITY=$(LC_ALL=C awk -v size="$ICON_SIZE" -v dimension="$SVG_MAX_DIM" \
+            'BEGIN { printf "%.4f", 96 * size / dimension }')
+
+        log_verbose "SVG rasterization: ${SVG_WIDTH}x${SVG_HEIGHT} at ${SVG_DENSITY} DPI"
+        if ! "$IM_CMD" -density "$SVG_DENSITY" -background none "$INPUT_IMG" -resize "${ICON_SIZE}x${ICON_SIZE}" "$RAW_PNG" 2>/dev/null; then
             printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "ImageMagick rasterization error"
             cleanup_local
             return 1
@@ -198,9 +257,9 @@ process_file() {
         fi
     fi
 
-    # Method 2: ImageMagick PNG-in-ICO
+    # Method 2: PNG payload in ICO
     local ICO_2="$WORK_DIR/cand2_im_png.ico"
-    if "$IM_CMD" "$OPT_PNG" -define icon:auto-resize="$ICON_SIZE" "ico:$ICO_2" &>/dev/null; then
+    if create_png_ico "$OPT_PNG" "$ICO_2"; then
         if [ -f "$ICO_2" ]; then
             local SIZE_2
             SIZE_2=$(stat -c%s "$ICO_2")

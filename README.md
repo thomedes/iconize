@@ -7,7 +7,8 @@ A Bash script that optimizes and converts image files (`.svg`, `.png`, etc.) int
 - **Multi-method optimization**: Evaluates `icotool` and several ImageMagick PNG/BMP3/Zip modes in parallel to pick the smallest resulting file.
 - **Batch processing**: Converts multiple files in a single execution without halting on individual errors.
 - **Automatic PNG optimization**: Uses `pngquant` for palette reduction and metadata stripping before icon packaging.
-- **Custom sizing**: Defaults to **256x256 px** (ideal for KDE Dolphin, desktop folders, and KeePassXC), with full support for custom pixel sizes.
+- **Consistent PNG-backed ICO output**: The `im_png` method stores a PNG payload at every supported icon size, rather than letting ImageMagick switch to a larger BMP payload below 256 px.
+- **Custom sizing**: Defaults to **256x256 px** (ideal for KDE Dolphin, desktop folders, and KeePassXC), with full support for custom pixel sizes. SVGs are rasterized at the requested size regardless of their declared intrinsic dimensions.
 - **GNU/FSF compliant**: Includes standard CLI options (`--help`, `--version`) and formatted tabular output.
 - **Noexec friendly**: Can be run via `bash iconize.sh` on partitions mounted with `noexec` (e.g., NTFS mounts).
 
