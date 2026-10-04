@@ -38,6 +38,7 @@ On Debian / Ubuntu:
 | Option | Description |
 | :--- | :--- |
 | `-s, --size SIZE` | Target icon resolution in pixels (default: `256`) |
+| `-a, --all-methods` | Keep every valid method output, named `<file>.<method>.ico` |
 | `-v, --verbose` | Display step-by-step candidate size evaluations |
 | `-h, --help` | Display usage instructions and exit |
 | `--version` | Display version and license information |
@@ -51,6 +52,12 @@ Convert a single SVG file using default 256x256 resolution:
 Batch convert multiple files to 64x64 px with verbose output:
 
   bash iconize.sh -s 64 -v *.png *.svg
+
+Keep every valid conversion method output:
+
+  bash iconize.sh --all-methods foo.svg
+
+This creates files such as `foo.im_png.ico`, `foo.im_bmp3.ico`, and `foo.im_zip.ico` (plus `foo.icotool.ico` when `icotool` is available).
 
 ## License
 

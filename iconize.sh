@@ -22,14 +22,15 @@ set -o pipefail
 
 PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-VERSION="1.0.1"
+VERSION="1.1.0"
 VERBOSE=0
+ALL_METHODS=0
 ICON_SIZE=256
 FILES=()
 
 # FSF Recommended --help output
 show_help() {
-    cat << EOF
+    cat <<EOF
 Usage: $0 [OPTIONS] <file1> [file2 ...]
 
 Optimize and convert input images (SVG, PNG, etc.) to ICO format using
@@ -37,6 +38,7 @@ multiple compression strategies to produce the smallest possible output.
 
 Options:
   -s, --size SIZE    Set target size in pixels (default: 256)
+  -a, --all-methods  Keep every valid method output, named <file>.<method>.ico
   -v, --verbose      Show detailed optimization steps
   -h, --help         Display this help message and exit
       --version      Output version information and exit
@@ -52,7 +54,7 @@ EOF
 
 # FSF Recommended --version output
 show_version() {
-    cat << EOF
+    cat <<EOF
 iconize $VERSION
 
 Copyright (C) 2026 Toni Homedes i Saun <toni@homedes.net>
@@ -67,29 +69,33 @@ EOF
 # Parse options
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -v|--verbose)
-            VERBOSE=1
-            shift
-            ;;
-        -s|--size)
-            if [[ -n "${2:-}" && "$2" =~ ^[0-9]+$ ]]; then
-                ICON_SIZE="$2"
-                shift 2
-            else
-                echo "Error: -s|--size requires a numeric value." >&2
-                exit 1
-            fi
-            ;;
-        -h|--help)
-            show_help
-            ;;
-        --version)
-            show_version
-            ;;
-        *)
-            FILES+=("$1")
-            shift
-            ;;
+    -a | --all-methods)
+        ALL_METHODS=1
+        shift
+        ;;
+    -v | --verbose)
+        VERBOSE=1
+        shift
+        ;;
+    -s | --size)
+        if [[ -n "${2:-}" && "$2" =~ ^[0-9]+$ ]]; then
+            ICON_SIZE="$2"
+            shift 2
+        else
+            echo "Error: -s|--size requires a numeric value." >&2
+            exit 1
+        fi
+        ;;
+    -h | --help)
+        show_help
+        ;;
+    --version)
+        show_version
+        ;;
+    *)
+        FILES+=("$1")
+        shift
+        ;;
     esac
 done
 
@@ -245,6 +251,31 @@ process_file() {
         printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "No valid candidate generated"
         cleanup_local
         return 1
+    fi
+
+    if [ "$ALL_METHODS" -eq 1 ]; then
+        local COPY_FAILED=0
+        for METHOD in icotool im_png im_bmp3 im_zip; do
+            local CAND_FILE="${CANDIDATES[$METHOD]:-}"
+            if [ -z "$CAND_FILE" ]; then
+                continue
+            fi
+
+            local METHOD_OUTPUT="${INPUT_IMG%.*}.${METHOD}.ico"
+            local METHOD_SIZE
+            METHOD_SIZE=$(stat -c%s "$CAND_FILE")
+            if cp "$CAND_FILE" "$METHOD_OUTPUT"; then
+                local METHOD_HUMAN_SIZE
+                METHOD_HUMAN_SIZE=$(numfmt --to=iec-i --suffix=B "$METHOD_SIZE" 2>/dev/null || echo "${METHOD_SIZE} B")
+                printf "  %-8s %-32s %-12s (%s)\n" "[OK]" "$METHOD_OUTPUT" "$METHOD_HUMAN_SIZE" "$METHOD"
+            else
+                printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$METHOD_OUTPUT" "-" "Could not write output file"
+                COPY_FAILED=1
+            fi
+        done
+
+        cleanup_local
+        return "$COPY_FAILED"
     fi
 
     cp "$BEST_FILE" "$OUTPUT_ICO"
