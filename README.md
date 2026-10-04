@@ -8,7 +8,7 @@ A Bash script that optimizes and converts image files (`.svg`, `.png`, etc.) int
 - **Batch processing**: Converts multiple files in a single execution without halting on individual errors.
 - **Automatic PNG optimization**: Uses `pngquant` for palette reduction and metadata stripping before icon packaging.
 - **Consistent PNG-backed ICO output**: The `im_png` method stores a PNG payload at every supported icon size, rather than letting ImageMagick switch to a larger BMP payload below 256 px.
-- **Custom sizing**: Defaults to **256x256 px** (ideal for KDE Dolphin, desktop folders, and KeePassXC), with full support for custom pixel sizes. SVGs are rasterized at the requested size regardless of their declared intrinsic dimensions.
+- **Custom sizing**: Defaults to **256x256 px** (ideal for KDE Dolphin, desktop folders, and KeePassXC), with full support for custom pixel sizes. SVGs use librsvg for reliable rendering of `viewBox`, percentage dimensions, gradients, and strokes.
 - **GNU/FSF compliant**: Includes standard CLI options (`--help`, `--version`) and formatted tabular output.
 - **Noexec friendly**: Can be run via `bash iconize.sh` on partitions mounted with `noexec` (e.g., NTFS mounts).
 
@@ -18,6 +18,7 @@ Required tools:
 - `bash` (v4.0+)
 - `imagemagick` (`magick` or `convert`)
 - `pngquant`
+- `librsvg` (`rsvg-convert`, required when converting SVG input)
 
 Optional (recommended):
 - `icoutils` (`icotool` — enables direct PNG-in-ICO packaging)
@@ -28,7 +29,7 @@ Optional (recommended):
 On Debian / Ubuntu:
 
   sudo apt update
-  sudo apt install imagemagick pngquant icoutils coreutils
+  sudo apt install imagemagick pngquant librsvg2-bin icoutils coreutils
 
 ## Usage
 

@@ -22,7 +22,7 @@ set -o pipefail
 
 PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 VERBOSE=0
 ALL_METHODS=0
 ICON_SIZE=256
@@ -201,32 +201,18 @@ process_file() {
     local RAW_PNG="$WORK_DIR/raw.png"
     local OPT_PNG="$WORK_DIR/opt.png"
 
-    # Rasterize SVG or resize bitmap
-    if [[ "$INPUT_IMG" =~ \.svg$ ]]; then
-        local SVG_GEOMETRY
-        if ! SVG_GEOMETRY=$("$IM_CMD" -density 96 "$INPUT_IMG" -format '%w %h' info: 2>/dev/null); then
-            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "SVG dimension inspection error"
+    # Rasterize SVGs with librsvg so viewBox and percentage dimensions are resolved consistently.
+    if [[ "$INPUT_IMG" =~ \.[sS][vV][gG]$ ]]; then
+        if ! command -v rsvg-convert >/dev/null 2>&1; then
+            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "SVG conversion requires rsvg-convert (librsvg)"
             cleanup_local
             return 1
         fi
 
-        local SVG_WIDTH SVG_HEIGHT SVG_MAX_DIM SVG_DENSITY
-        read -r SVG_WIDTH SVG_HEIGHT <<<"$SVG_GEOMETRY"
-        if [[ ! "$SVG_WIDTH" =~ ^[1-9][0-9]*$ || ! "$SVG_HEIGHT" =~ ^[1-9][0-9]*$ ]]; then
-            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "Invalid SVG dimensions"
-            cleanup_local
-            return 1
-        fi
-        SVG_MAX_DIM="$SVG_WIDTH"
-        if ((SVG_HEIGHT > SVG_MAX_DIM)); then
-            SVG_MAX_DIM="$SVG_HEIGHT"
-        fi
-        SVG_DENSITY=$(LC_ALL=C awk -v size="$ICON_SIZE" -v dimension="$SVG_MAX_DIM" \
-            'BEGIN { printf "%.4f", 96 * size / dimension }')
-
-        log_verbose "SVG rasterization: ${SVG_WIDTH}x${SVG_HEIGHT} at ${SVG_DENSITY} DPI"
-        if ! "$IM_CMD" -density "$SVG_DENSITY" -background none "$INPUT_IMG" -resize "${ICON_SIZE}x${ICON_SIZE}" "$RAW_PNG" 2>/dev/null; then
-            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "ImageMagick rasterization error"
+        log_verbose "SVG rasterization: ${ICON_SIZE}x${ICON_SIZE} via rsvg-convert"
+        if ! rsvg-convert --format=png --width="$ICON_SIZE" --height="$ICON_SIZE" \
+            --keep-aspect-ratio --output="$RAW_PNG" "$INPUT_IMG" 2>/dev/null; then
+            printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "librsvg rasterization error"
             cleanup_local
             return 1
         fi
