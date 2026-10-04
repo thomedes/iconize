@@ -39,7 +39,7 @@ On Debian / Ubuntu:
 | Option | Description |
 | :--- | :--- |
 | `-s, --size SIZE` | Target icon resolution in pixels (default: `256`) |
-| `-a, --all-methods` | Keep every valid method output, named `<file>.<method>.ico` |
+| `-a, --all-methods` | Keep every valid method output, named `<file>.<size>.<method>.ico` |
 | `-v, --verbose` | Display step-by-step candidate size evaluations |
 | `-h, --help` | Display usage instructions and exit |
 | `--version` | Display version and license information |
@@ -58,7 +58,9 @@ Keep every valid conversion method output:
 
   bash iconize.sh --all-methods foo.svg
 
-This creates files such as `foo.im_png.ico`, `foo.im_bmp3.ico`, and `foo.im_zip.ico` (plus `foo.icotool.ico` when `icotool` is available).
+This creates files such as `foo.256.im_png.ico`, `foo.256.im_bmp3.ico`, and `foo.256.im_zip.ico` (plus `foo.256.icotool.ico` when `icotool` is available).
+
+Output filenames include the target resolution: `foo.svg` becomes `foo.256.ico` by default, or `foo.128.ico` with `-s 128`.
 
 ## License
 

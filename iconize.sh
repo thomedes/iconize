@@ -22,7 +22,7 @@ set -o pipefail
 
 PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-VERSION="1.1.1"
+VERSION="1.2.0"
 VERBOSE=0
 ALL_METHODS=0
 ICON_SIZE=256
@@ -38,7 +38,7 @@ multiple compression strategies to produce the smallest possible output.
 
 Options:
   -s, --size SIZE    Set target size in pixels (default: 256)
-  -a, --all-methods  Keep every valid method output, named <file>.<method>.ico
+  -a, --all-methods  Keep every valid method output, named <file>.<size>.<method>.ico
   -v, --verbose      Show detailed optimization steps
   -h, --help         Display this help message and exit
       --version      Output version information and exit
@@ -180,7 +180,8 @@ create_png_ico() {
 # Process a single file
 process_file() {
     local INPUT_IMG="$1"
-    local OUTPUT_ICO="${INPUT_IMG%.*}.ico"
+    local OUTPUT_BASE="${INPUT_IMG%.*}.${ICON_SIZE}"
+    local OUTPUT_ICO="${OUTPUT_BASE}.ico"
 
     if [ ! -f "$INPUT_IMG" ]; then
         printf "  %-8s %-32s %-12s %s\n" "[FAIL]" "$INPUT_IMG" "-" "File not found"
@@ -320,7 +321,7 @@ process_file() {
                 continue
             fi
 
-            local METHOD_OUTPUT="${INPUT_IMG%.*}.${METHOD}.ico"
+            local METHOD_OUTPUT="${OUTPUT_BASE}.${METHOD}.ico"
             local METHOD_SIZE
             METHOD_SIZE=$(stat -c%s "$CAND_FILE")
             if cp "$CAND_FILE" "$METHOD_OUTPUT"; then
